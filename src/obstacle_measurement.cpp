@@ -58,13 +58,14 @@ bool isEdgePoint(spoint p1, spoint p2, spoint p3, double max);
 Point getCrossPoint(vector<int> LineA, vector<int> LineB);
 vector<int> getLineParam(Point start, Point end);
 float lines_orientation(Point begin, Point end, int flag);
-void houghlinedetect(Mat& roiImg, string objectName);
+vector<Vec4i> houghlinedetect(Mat& roiImg);
 void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor>& laserPoint );
 void pointInRoi(Rect roi, vector<laser_coor>& allPoint, vector<laser_coor>& inPoint);
 vector<laser_coor> getIndex(vector<laser_coor>& Point);
 float getHorizonAngle(vector<laser_coor>& Point);
 void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sensor_msgs::LaserScanConstPtr& laser_data );
 float computerPiexDistance(vector<laser_coor>& Point);
+void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label);
 
 string modelConfiguration = "/home/wode/configuration_folder/trash_ssd/opencv_mbssd_indoor/MobileNetSSD_deploy.prototxt";
 string modelBinary = "/home/wode/configuration_folder/trash_ssd/opencv_mbssd_indoor/mobilenet_indoorone_120000.caffemodel";
@@ -194,12 +195,10 @@ float lines_orientation(Point begin, Point end, int flag)
 
 //识别物体轮廓并画框显示
 //利用霍夫变换检测直线然后选择最外侧的直线作为轮廓线
-void houghlinedetect(Mat& roiImg, string objectName)
+vector<Vec4i> houghlinedetect(Mat& roiImg)
 {
 
 	int threshold_value = 135;
-
-	vector<vector<Point>> H_Line, V_Line;//储存水平线与竖直线 储存每条线的起点 中点和终点
 
     Mat dst;
 	//使用边缘检测将图片二值化
@@ -208,12 +207,32 @@ void houghlinedetect(Mat& roiImg, string objectName)
 	vector<Vec4i> lines;//存储直线数据
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
 
-	for (size_t i = 0; i < lines.size(); i++)
+	imshow("canny",  dst);
+
+	return lines;
+
+}
+
+void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
+{
+
+	vector<Vec4i> lines = houghlinedetect(roiImg);
+
+	auto di = getIndex(laserPoint);
+	auto Hangle = getHorizonAngle(laserPoint);
+	auto dis   = computerPiexDistance(di);
+	ROS_INFO_STREAM("angle is "<<Hangle);
+	ROS_INFO_STREAM("dis is "<<dis);
+	//ROS_INFO_STREAM("all size is "<<inPoint.size()<<", cut size is "<<di.size());
+
+	vector<vector<Point>> H_Line, V_Line;//储存水平线与竖直线 储存每条线的起点 中点和终点
+
+    for (size_t i = 0; i < lines.size(); i++)
 	{
 		Vec4i Points = lines[i];
 		Point begin(Points[0], Points[1]), end(Points[2], Points[3]);
 		float angle = fabs(lines_orientation(begin, end, 1));
-		if (angle < 30) {
+		if (fabs(Hangle-angle) < 3) {
 			vector<Point> tmp;
 			tmp.push_back(begin);
 			tmp.push_back(end);
@@ -229,9 +248,18 @@ void houghlinedetect(Mat& roiImg, string objectName)
 		}	
 	}
 
-	if(H_Line.size()<2 || V_Line.size()<2)  return;
+	if(H_Line.size()<2 || V_Line.size()<2)  
+	{
+		ROS_INFO_STREAM("检测到特征过少!");
+		for(int i = 0; i<laserPoint.size(); i++)
+		{
+			circle(roiImg, Point(laserPoint[i].first.first.x, laserPoint[i].first.first.x), 2, Scalar(0, 0, 255), 2, LINE_AA);
+		}
+		imshow("circle",  roiImg);
+		return;
+	}
 
-    ROS_INFO_STREAM("检测到"<<objectName<<",开始测量......");
+    ROS_INFO_STREAM("检测到"<<class_array[label]<<",开始测量......");
 	
 	int top=0, left=0, bottom=0, right=0;//保存边框点的索引
 	for (int i = 0; i < H_Line.size(); ++i) {//查找水平边缘线
@@ -239,11 +267,37 @@ void houghlinedetect(Mat& roiImg, string objectName)
 		if (H_Line[i][2].y > H_Line[bottom][2].y) bottom = i;
 	}
 
-	for (int i = 0; i < V_Line.size(); ++i) {//查找竖直边缘线
-		if (V_Line[i][2].x < V_Line[left][2].x) left = i;
-		if (V_Line[i][2].x > V_Line[right][2].x) right = i;
-	}
+    //if(label == 7 || label ==8)
+	//{
+		for (int i = 0; i < V_Line.size(); ++i) {//查找竖直边缘线
+			if (V_Line[i][2].x < V_Line[left][2].x) left = i;
+			if (V_Line[i][2].x > V_Line[right][2].x) right = i;
+		}
+	//}
+	// else
+	// {
+	// 	int y = (H_Line[top][2].y + H_Line[bottom][2].y)/2;
+	// 	V_Line[0][2].x = laserPoint[0].first.first.x;
+	// 	V_Line[0][2].y = y-2;
 
+	// 	V_Line[0][0].x = laserPoint[0].first.first.x-2;
+	// 	V_Line[0][0].y = y;
+
+	// 	V_Line[0][1].x = laserPoint[0].first.first.x+2;
+	// 	V_Line[0][1].y = y+2;
+	// 	right = 0;
+
+	// 	V_Line[1][2].x = laserPoint[laserPoint.size()-1].first.first.x;
+	// 	V_Line[1][2].y = y-2;
+
+	// 	V_Line[1][0].x = laserPoint[laserPoint.size()-1].first.first.x;
+	// 	V_Line[1][0].y = y;
+
+	// 	V_Line[1][1].x = laserPoint[laserPoint.size()-1].first.first.x;
+	// 	V_Line[1][1].y = y+2;
+	// 	left = 1;
+	// }
+	
     //将边缘线延长
 	vector<int> paramA  = getLineParam(H_Line[top][0], H_Line[top][1]);
 	vector<int> paramB = getLineParam(V_Line[left][0], V_Line[left][1]);
@@ -268,10 +322,8 @@ void houghlinedetect(Mat& roiImg, string objectName)
 	line(gray_dst, H_Line[bottom][0], crossPoint, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, V_Line[right][0], crossPoint, Scalar(0, 0, 255), 1, LINE_AA);
 
-	imshow("lines", gray_dst);//显示霍夫变换检测后框选的物体轮廓图
-
+	imshow("lines",  gray_dst);//显示霍夫变换检测后框选的物体轮廓图
 }
-
 //激光雷达坐标系转换为像素坐标系 并判断激光点是否为边缘点
 void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor>& laserPoint )
 {
@@ -471,13 +523,6 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 
 		Rect object_rect(x, y, w, h);
 
-        vector<laser_coor> inPoint;
-        pointInRoi(object_rect, laserPoint, inPoint);
-		auto di = getIndex(inPoint);
-		ROS_INFO_STREAM("angle is "<<getHorizonAngle(inPoint));
-		ROS_INFO_STREAM("dis is "<<computerPiexDistance(di));
-		ROS_INFO_STREAM("all size is "<<inPoint.size()<<", cut size is "<<di.size());
-
         ROS_INFO("运行grabcut函数......");
         //抠图 去除背景干扰
         Mat cut, bg, fg;
@@ -487,10 +532,13 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 		rgb_ptr->image.copyTo(foreGround, cut);
 		ROS_INFO("grabcut函数完成");
 
-		houghlinedetect(foreGround, class_array[detection_i]);
+        vector<laser_coor> inPoint;
+        pointInRoi(object_rect, laserPoint, inPoint);
+		auto line = houghlinedetect(foreGround);
+		measurement(foreGround, inPoint, detection_i);
 
         imshow("original", rgb_ptr->image);
-		imshow("grabcut", foreGround);
+		//imshow("grabcut", foreGround);
 
 		waitKey(10);
 
