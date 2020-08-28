@@ -1,0 +1,13 @@
+<launch>
+
+  <include file="/home/wh/mxz_ws/src/iai_kinect2/kinect2_bridge/launch/kinect2_bridge.launch"/>
+
+  <node pkg="lms1xx" type="LMS1xx_node" name="LMS1xx_node" output="screen"/>
+
+  <node name="mbot_teleop" pkg="mbot_teleop" type="mbot_teleop.py" output="screen"/>
+
+  <node name="arduino" pkg="ros_arduino_python" type="arduino_node.py" output="screen">
+      <rosparam file="$(find ros_arduino_python)/config/my_arduino_params4.yaml" command="load" />
+  </node>
+
+</launch>
