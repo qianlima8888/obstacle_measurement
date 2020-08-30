@@ -205,7 +205,7 @@ vector<Vec4i> houghlinedetect(Mat& roiImg)
 	vector<Vec4i> lines;//存储直线数据
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
 
-	imshow("canny",  dst);
+	//imshow("canny",  dst);
 
 	return lines;
 
