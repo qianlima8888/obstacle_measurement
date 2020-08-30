@@ -427,9 +427,9 @@ float getHorizonAngle(vector<laser_coor>& result)
 //接收到传感器数据后的回调函数
 void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sensor_msgs::LaserScanConstPtr& laser_data )
 {
-	ROS_INFO("----------------------------");
-	ROS_INFO("得到一帧同步数据, 开始处理......");
-	clock_t time_old = clock();
+	//ROS_INFO("----------------------------");
+	//ROS_INFO("得到一帧同步数据, 开始处理......");
+	//clock_t time_old = clock();
 
 	vector<laser_coor> laserPoint;
 	laser_to_rgb(laser_data, laserPoint);
@@ -452,6 +452,8 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 		ROS_INFO("结束该帧数据处理, 等待下帧数据.....");
 		return;
 	}
+
+	imshow("original", rgb_ptr->image);
 
     //运行深度学习检测图片中的物体
 	Mat delframe;
@@ -529,14 +531,14 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 		auto line = houghlinedetect(foreGround);
 		measurement(foreGround, inPoint, *new_detection_iterator);
         
-        imshow("original", rgb_ptr->image);
+        
 		//imshow("grabcut", foreGround);
 
 		waitKey(10);
 
 	}
 
-	ROS_INFO("数据处理完成.等待下帧数据.\n");
+	//ROS_INFO("数据处理完成.等待下帧数据.\n");
 
 }
 
