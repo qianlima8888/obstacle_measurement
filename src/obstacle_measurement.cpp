@@ -321,6 +321,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 	float wh = sqrt((crossPointBL-crossPointBR).dot(crossPointBL-crossPointBR))*dis;
 
 	ROS_INFO_STREAM("higet is "<<hi<<", width is "<<wh);
+	ROS_INFO_STREAM("-------------------------------\n");
 
 	char tx[20];
 	sprintf(tx, "%.2f", hi);
