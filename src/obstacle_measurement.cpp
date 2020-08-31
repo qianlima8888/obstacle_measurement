@@ -272,6 +272,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 		return;
 	}
 
+    ROS_INFO_STREAM("-------------------------------");
     ROS_INFO_STREAM("检测到"<<class_array[label]<<",开始测量......");
 	
 	int top=0, left=0, bottom=0, right=0;//保存边框点的索引
@@ -320,7 +321,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
     float hi = sqrt((crossPointTL-crossPointBL).dot(crossPointTL-crossPointBL))*dis;
 	float wh = sqrt((crossPointBL-crossPointBR).dot(crossPointBL-crossPointBR))*dis;
 
-	ROS_INFO_STREAM("higet is "<<hi<<", width is "<<wh);
+	ROS_INFO_STREAM("higet is "<<hi<<"cm, width is "<<wh<<"cm");
 	ROS_INFO_STREAM("-------------------------------\n");
 
 	char tx[20];
