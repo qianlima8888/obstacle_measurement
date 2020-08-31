@@ -292,6 +292,14 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 	vector<int> paramD = getLineParam(V_Line[right][0], V_Line[right][1]);
 
     Mat gray_dst = roiImg.clone();
+	Mat LaserMat = roiImg.clone();
+
+	//可视化激光点
+    for(int i = 0; i<laserPoint.size(); i++)
+	{
+		circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 0, 255), 1, 1);
+	}
+
     //绘制轮廓
 	Point crossPointTL = getCrossPoint(paramA, paramB);
 	line(gray_dst, H_Line[top][0], crossPointTL, Scalar(0, 0, 255), 1, LINE_AA);
@@ -314,7 +322,15 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 
 	ROS_INFO_STREAM("higet is "<<hi<<", width is "<<wh);
 
+	char tx[20];
+	sprintf(tx, "%.2f", hi);
+    putText(gray_dst, tx, (crossPointTL+crossPointBL)/2, FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0,0,255), 1.8);
+	memset(tx, 0, 20);
+	sprintf(tx, "%.2f", wh);
+	putText(gray_dst, tx, (crossPointBR+crossPointBL)/2, FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0,0,255), 1.8);
+
 	imshow("lines",  gray_dst);//显示霍夫变换检测后框选的物体轮廓图
+	imshow("laser",  LaserMat);//显示可视化的激光雷达点
 }
 //激光雷达坐标系转换为像素坐标系 并判断激光点是否为边缘点
 void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor>& laserPoint )
