@@ -491,7 +491,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 	for (int i = 0; i < detectionMat.rows; i++)  
 	{  
 		float confidence = detectionMat.at<float>(i, 2);//置信度 
-		if ( confidence > 0.5 ) 
+		if ( confidence > 0.3 ) 
 		{
 
 			int labelidx = detectionMat.at<float>(i, 1);//识别物体类别
