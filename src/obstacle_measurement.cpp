@@ -299,7 +299,11 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 	//可视化激光点
     for(int i = 0; i<laserPoint.size(); i++)
 	{
-		circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 0, 255), 1, 1);
+		if(laserPoint[i].first.second)
+		    circle(LaserMat, laserPoint[i].first.first, 2, Scalar(0, 0, 255), 2, 1);
+		else
+		    circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1);
+		
 	}
 
     //绘制轮廓
@@ -374,6 +378,47 @@ void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor
 			}
 
         }
+        
+		vector<int> conPoints;//储存连续的特征点
+		vector<int> edgePoints;
+		
+		for(int id = 5; id<laserPoint.size()-5; id++)
+		{
+            //去除单个边缘点 单个边缘点基本是平面点
+			if(laserPoint[id].first.second && (!laserPoint[id+1].first.second) && (!laserPoint[id-1].first.second))
+			{
+				laserPoint[id].first.second = false;
+				
+			}
+            
+			//对连续的边缘点取中间的作为最终的边缘点
+			if(!laserPoint[id].first.second)
+			{
+                if(conPoints.size()>3)
+				{
+					//ROS_INFO_STREAM("size is "<<conPoints.size());
+                    edgePoints.push_back(conPoints[conPoints.size()/2]);
+				}
+				vector<int>().swap(conPoints);
+			}
+            
+			//储存连续的边缘点
+			if(laserPoint[id].first.second && ((laserPoint[id+1].first.second) || (laserPoint[id-1].first.second)))
+			{
+				conPoints.push_back(id);
+			}
+
+        }
+
+		for(int id = 0; id<laserPoint.size(); id++)
+		{
+				laserPoint[id].first.second = false;
+        }
+
+		for(int id:edgePoints)
+		{
+			laserPoint[id].first.second = true;
+		}
 
 }
 
