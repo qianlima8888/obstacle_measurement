@@ -206,7 +206,7 @@ vector<Vec4i> houghlinedetect(Mat& roiImg)
 	vector<Vec4i> lines;//存储直线数据
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
 
-	//imshow("canny",  dst);
+	imshow("canny",  dst);
 
 	return lines;
 
@@ -239,7 +239,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 		}
 		else
 		{
-			maxAngle = 3;
+			maxAngle = 30;
 		}
 		//ROS_INFO_STREAM("Han is "<<Hangle<<", angle is "<<angle<<", max is "<<maxAngle);
 		if (fabs(Hangle-angle) < maxAngle) 
@@ -267,7 +267,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 
 	if(H_Line.size()<2 || V_Line.size()<2)  
 	{
-		//ROS_INFO_STREAM("检测到特征过少!");
+		ROS_INFO_STREAM("检测到特征过少!");
 		//ROS_INFO_STREAM("H size is "<<H_Line.size());
 		//ROS_INFO_STREAM("V size is "<<V_Line.size());
 		return;
@@ -491,7 +491,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 	for (int i = 0; i < detectionMat.rows; i++)  
 	{  
 		float confidence = detectionMat.at<float>(i, 2);//置信度 
-		if ( confidence > 0.01 ) 
+		if ( confidence > -1 ) 
 		{
 
 			int labelidx = detectionMat.at<float>(i, 1);//识别物体类别
@@ -547,13 +547,12 @@ void combineCallback(const sensor_msgs::ImageConstPtr& rgb_image_qhd, const sens
 
         vector<laser_coor> inPoint;
         pointInRoi(object_rect, laserPoint, inPoint);
-		auto line = houghlinedetect(foreGround);
+		//auto line = houghlinedetect(foreGround);
 		measurement(foreGround, inPoint, *new_detection_iterator);
         
-        
-		//imshow("grabcut", foreGround);
+		imshow("grabcut", foreGround);
 
-		waitKey(10);
+		waitKey(1000);
 
 	}
 
