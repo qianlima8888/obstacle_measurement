@@ -427,8 +427,8 @@ void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor
 void pointInRoi(Rect roi, vector<laser_coor>& allPoint, vector<laser_coor>& inPoint)
 {
 
-    int Xmin = roi.tl().x, Ymin = roi.tl().y;
-	int Xmax = roi.br().x, Ymax = roi.br().y;
+    int Xmin = roi.tl().x*1.1, Ymin = roi.tl().y*1.1;
+	int Xmax = roi.br().x*0.95, Ymax = roi.br().y*0.95;
 
 	for(int i = 0; i<allPoint.size(); ++i)
 	{
