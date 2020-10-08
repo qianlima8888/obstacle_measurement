@@ -215,9 +215,26 @@ vector<Vec4i> houghlinedetect(Mat& roiImg)
 void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 {
 
+    Mat LaserMat = roiImg.clone();
 	vector<Vec4i> lines = houghlinedetect(roiImg);
 
+    int rangeXMIN, rangeXMAX;
 	auto di = getIndex(laserPoint);
+    if(di.size()==0)
+	{
+		ROS_INFO_STREAM("激光雷达数据过少,无法完成检测!");
+	}
+	else
+	{
+		rangeXMAX = di[0].first.first.x*1.1;
+		rangeXMIN = di[di.size()-1].first.first.x*0.9;
+	}
+
+	// circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
+	// circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
+	// circle(LaserMat, Point2i(50,100), 5, Scalar(255, 0, 0), 1, 1);
+	// imshow("laser",  LaserMat);//显示可视化的激光雷达点
+
 	auto Hangle = getHorizonAngle(di);
 	auto dis   = computerPiexDistance(di);
 	//ROS_INFO_STREAM("angle is "<<Hangle);
@@ -239,23 +256,29 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 		}
 		else
 		{
-			maxAngle = 30;
+			maxAngle = 10;
 		}
 		//ROS_INFO_STREAM("Han is "<<Hangle<<", angle is "<<angle<<", max is "<<maxAngle);
-		if (fabs(Hangle-angle) < maxAngle) 
+		if (fabs(Hangle-angle) <= maxAngle) 
 		{
-			vector<Point> tmp;
-			tmp.push_back(begin);
-			tmp.push_back(end);
-			tmp.push_back(Point((begin.x + end.x) / 2, (begin.y + end.y) / 2));
-			H_Line.push_back(tmp);
+			if((((begin.x + end.x) / 2) >= rangeXMIN) && (((begin.x + end.x) / 2) <= rangeXMAX))
+	        {	
+				vector<Point> tmp;
+				tmp.push_back(begin);
+				tmp.push_back(end);
+				tmp.push_back(Point((begin.x + end.x) / 2, (begin.y + end.y) / 2));
+				H_Line.push_back(tmp);
+			}
 		}
 		else if(angle > 85) {
-			vector<Point> tmp;
-			tmp.push_back(begin);
-			tmp.push_back(end);
-			tmp.push_back(Point((begin.x + end.x) / 2, (begin.y + end.y) / 2));
-			V_Line.push_back(tmp);
+			if((((begin.x + end.x) / 2) >= rangeXMIN) && (((begin.x + end.x) / 2) <= rangeXMAX))
+			{
+                vector<Point> tmp;
+				tmp.push_back(begin);
+				tmp.push_back(end);
+				tmp.push_back(Point((begin.x + end.x) / 2, (begin.y + end.y) / 2));
+				V_Line.push_back(tmp);
+			}
 		}	
 	}
 
@@ -267,9 +290,9 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 
 	if(H_Line.size()<2 || V_Line.size()<2)  
 	{
-		ROS_INFO_STREAM("检测到特征过少!");
-		//ROS_INFO_STREAM("H size is "<<H_Line.size());
-		//ROS_INFO_STREAM("V size is "<<V_Line.size());
+		ROS_INFO_STREAM("检测到直线特征过少!");
+		ROS_INFO_STREAM("H line size is "<<H_Line.size());
+		ROS_INFO_STREAM("V line size is "<<V_Line.size());
 		return;
 	}
 
@@ -294,7 +317,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label)
 	vector<int> paramD = getLineParam(V_Line[right][0], V_Line[right][1]);
 
     Mat gray_dst = roiImg.clone();
-	Mat LaserMat = roiImg.clone();
+	
 
 	//可视化激光点
     for(int i = 0; i<laserPoint.size(); i++)
