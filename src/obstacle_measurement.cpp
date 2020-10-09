@@ -232,7 +232,6 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label, int x, 
 
 	circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
 	circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
-	// circle(LaserMat, Point2i(50,100), 5, Scalar(255, 0, 0), 1, 1);
 	imshow("laser",  LaserMat);//显示可视化的激光雷达点
 
 	auto Hangle = getHorizonAngle(di);
@@ -401,10 +400,10 @@ void laser_to_rgb( const sensor_msgs::LaserScanConstPtr& scan, vector<laser_coor
 			}
 		}
 
-		for(int id = 5; id<laserPoint.size()-5; id++)
+		for(int id = 4; id<laserPoint.size()-4; id++)
 		{
 
-			if(isEdgePoint(laserPoint[id-5].second, laserPoint[id].second, laserPoint[id+5].second, 8))
+			if(isEdgePoint(laserPoint[id-4].second, laserPoint[id].second, laserPoint[id+4].second, 5.5))
 			{
 				laserPoint[id].first.second = true;
 			}
