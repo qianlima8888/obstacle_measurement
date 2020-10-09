@@ -223,6 +223,7 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label, int x, 
     if(di.size()==0)
 	{
 		ROS_INFO_STREAM("激光雷达数据过少,无法完成检测!");
+		return;
 	}
 	else
 	{
