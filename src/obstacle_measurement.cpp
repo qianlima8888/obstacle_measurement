@@ -231,9 +231,9 @@ void measurement(Mat& roiImg, vector<laser_coor>& laserPoint, int label, int x, 
 		rangeXMIN = di[di.size()-1].first.first.x;
 	}
 
-	circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
-	circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
-	imshow("laser",  LaserMat);//显示可视化的激光雷达点
+	//circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
+	//circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
+	//imshow("laser",  LaserMat);//显示可视化的激光雷达点
 
 	auto Hangle = getHorizonAngle(di);
 	auto dis   = computerPiexDistance(di);
