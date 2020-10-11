@@ -65,7 +65,7 @@ void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 vector<laser_coor> getIndex(vector<laser_coor> &Point);
 float getHorizonAngle(vector<laser_coor> &Point);
 void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sensor_msgs::LaserScanConstPtr &laser_data);
-float computerPiexDistance(vector<laser_coor> &Point);
+void computerPiexDistance(vector<laser_coor> &Point, float result[2]);
 void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, int w);
 
 string modelConfiguration = "/home/wode/configuration_folder/trash_ssd/opencv_mbssd_indoor/MobileNetSSD_deploy.prototxt";
@@ -89,18 +89,27 @@ double laser2kinect_y = -0.095;
 double laser2kinect_z = 0.3;
 
 //计算每个像素点的实际距离(cm)
-float computerPiexDistance(vector<laser_coor> &Point)
+void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 {
+	//float result[2];
 	double dis = 0;
 	double all_piex = 0;
 	//截取中间激光点进行单位像素距离计算
 	for (int i = Point.size()*0.25; i < Point.size()*0.75; i++)
 	{
 		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
-		all_piex += sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*cos(thita);
-		dis += sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*cos(thita);
+		all_piex += fabs(sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*cos(thita));
+		dis += fabs(sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*cos(thita));
 	}
-	return dis / all_piex * 100;
+	result[0] = dis / all_piex * 100;
+
+	for (int i = Point.size()*0.25; i < Point.size()*0.75; i++)
+	{
+		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
+		all_piex += fabs(sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*sin(thita));
+		dis += fabs(sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*sin(thita));
+	}
+	result[1] = dis / all_piex * 100;
 }
 
 //相机坐标系转像素坐标系
@@ -237,7 +246,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	//imshow("laser",  LaserMat);//显示可视化的激光雷达点
 
 	auto Hangle = getHorizonAngle(di);
-	auto dis = computerPiexDistance(di);
+	float dis[2];
+	computerPiexDistance(di, dis);
 	//ROS_INFO_STREAM("angle is "<<Hangle);
 	//ROS_INFO_STREAM("dis is "<<dis);
 	//ROS_INFO_STREAM("all size is "<<inPoint.size()<<", cut size is "<<di.size());
@@ -365,8 +375,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, H_Line[bottom][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis * 0.8;
-	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis * 0.8;
+	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1] * 0.8;
+	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0] * 0.8;
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
