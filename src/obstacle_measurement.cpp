@@ -94,10 +94,11 @@ float computerPiexDistance(vector<laser_coor> &Point)
 	double dis = 0;
 	double all_piex = 0;
 	//截取中间激光点进行单位像素距离计算
-	for (int i = Point.size() * 0.2; i < Point.size() * 0.8; i++)
+	for (int i = Point.size()*0.25; i < Point.size()*0.75; i++)
 	{
-		all_piex += sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2));
-		dis += sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2));
+		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
+		all_piex += sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*cos(thita);
+		dis += sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*cos(thita);
 	}
 	return dis / all_piex * 100;
 }
