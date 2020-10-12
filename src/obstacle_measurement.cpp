@@ -94,22 +94,24 @@ void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 	//float result[2];
 	double dis = 0;
 	double all_piex = 0;
+
+	int begin = Point.size()*0.3;
+	int end = Point.size()*0.7;
+
+	if((end-begin) < 10)
+	{
+		begin = 1;
+		end = Point.size();
+	}
 	//截取中间激光点进行单位像素距离计算
-	for (int i = Point.size()*0.25; i < Point.size()*0.75; i++)
+	for (int i = begin; i < end; i++)
 	{
 		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
 		all_piex += fabs(sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*cos(thita));
 		dis += fabs(sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*cos(thita));
 	}
 	result[0] = dis / all_piex * 100;
-
-	for (int i = Point.size()*0.25; i < Point.size()*0.75; i++)
-	{
-		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
-		all_piex += fabs(sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*sin(thita));
-		dis += fabs(sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*sin(thita));
-	}
-	result[1] = dis / all_piex * 100;
+	result[1] = result[0];
 }
 
 //相机坐标系转像素坐标系
@@ -375,8 +377,13 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, H_Line[bottom][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1] * 0.8;
-	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0] * 0.8;
+    double reduse = 0.9;
+    if(label == 8)
+	{
+        reduse = 1.0;
+	}
+	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1] * reduse;
+	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0] * reduse;
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
@@ -424,7 +431,7 @@ void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor>
 	for (int id = 4; id < laserPoint.size() - 4; id++)
 	{
 
-		if (isEdgePoint(laserPoint[id - 4].second, laserPoint[id].second, laserPoint[id + 4].second, 5.5))
+		if (isEdgePoint(laserPoint[id - 4].second, laserPoint[id].second, laserPoint[id + 4].second, 10))
 		{
 			laserPoint[id].first.second = true;
 		}
@@ -484,6 +491,25 @@ void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 		{
 			inPoint.push_back(allPoint[i]);
 		}
+	}
+
+    //中值滤波
+    double x, y;
+	for(int i =2; i<inPoint.size()-2;i++)
+	{
+		x = 0;
+		y = 0;
+		x += inPoint[i-2].first.first.x + inPoint[i-1].first.first.x + inPoint[i].first.first.x + inPoint[i+1].first.first.x + inPoint[i+2].first.first.x;
+		y += inPoint[i-2].first.first.y + inPoint[i-1].first.first.y + inPoint[i].first.first.y + inPoint[i+1].first.first.y + inPoint[i+2].first.first.y;
+		inPoint[i].first.first.x = x/5;
+		inPoint[i].first.first.y = y/5;
+
+		x = 0;
+		y = 0;
+		x += inPoint[i-2].second.x + inPoint[i-1].second.x + inPoint[i].second.x + inPoint[i+1].second.x + inPoint[i+2].second.x;
+		y += inPoint[i-2].second.y + inPoint[i-1].second.y + inPoint[i].second.y + inPoint[i+1].second.y + inPoint[i+2].second.y;
+		inPoint[i].second.x = x/5;
+		inPoint[i].second.y = y/5;
 	}
 }
 
