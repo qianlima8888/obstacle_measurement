@@ -28,6 +28,8 @@ using namespace cv::dnn;
 
 #define pi 3.1415926
 
+bool hasEdge = false;
+
 typedef struct PPoint_
 {
 	double x;
@@ -378,10 +380,13 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 
     double reduse = 0.9;
-    if(label == 8)
+    if(label == 8 || hasEdge == false)
 	{
+		ROS_INFO_STREAM("reduse is 1");
         reduse = 1.0;
 	}
+
+    ROS_INFO_STREAM("reduse is "<<reduse);
 	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1] * reduse;
 	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0] * reduse;
 
@@ -483,7 +488,7 @@ void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 {
 
 	int Xmin = roi.tl().x * 1.1, Ymin = roi.tl().y * 1.1;
-	int Xmax = roi.br().x * 0.95, Ymax = roi.br().y * 0.95;
+	int Xmax = roi.br().x * 0.95 , Ymax = roi.br().y * 0.95;
 
 	for (int i = 0; i < allPoint.size(); ++i)
 	{
@@ -493,23 +498,44 @@ void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 		}
 	}
 
-    //中值滤波
-    double x, y;
-	for(int i =2; i<inPoint.size()-2;i++)
-	{
-		x = 0;
-		y = 0;
-		x += inPoint[i-2].first.first.x + inPoint[i-1].first.first.x + inPoint[i].first.first.x + inPoint[i+1].first.first.x + inPoint[i+2].first.first.x;
-		y += inPoint[i-2].first.first.y + inPoint[i-1].first.first.y + inPoint[i].first.first.y + inPoint[i+1].first.first.y + inPoint[i+2].first.first.y;
-		inPoint[i].first.first.x = x/5;
-		inPoint[i].first.first.y = y/5;
+    for(int i = 0; i<3; i++)
+    {
+		//中值滤波
+		double x, y;
+		for(int i =2; i<inPoint.size()-2;i++)
+		{
+			x = 0;
+			y = 0;
+			x += inPoint[i-2].first.first.x + inPoint[i-1].first.first.x + inPoint[i].first.first.x + inPoint[i+1].first.first.x + inPoint[i+2].first.first.x;
+			y += inPoint[i-2].first.first.y + inPoint[i-1].first.first.y + inPoint[i].first.first.y + inPoint[i+1].first.first.y + inPoint[i+2].first.first.y;
+			inPoint[i].first.first.x = x/5;
+			inPoint[i].first.first.y = y/5;
 
-		x = 0;
-		y = 0;
-		x += inPoint[i-2].second.x + inPoint[i-1].second.x + inPoint[i].second.x + inPoint[i+1].second.x + inPoint[i+2].second.x;
-		y += inPoint[i-2].second.y + inPoint[i-1].second.y + inPoint[i].second.y + inPoint[i+1].second.y + inPoint[i+2].second.y;
-		inPoint[i].second.x = x/5;
-		inPoint[i].second.y = y/5;
+			x = 0;
+			y = 0;
+			x += inPoint[i-2].second.x + inPoint[i-1].second.x + inPoint[i].second.x + inPoint[i+1].second.x + inPoint[i+2].second.x;
+			y += inPoint[i-2].second.y + inPoint[i-1].second.y + inPoint[i].second.y + inPoint[i+1].second.y + inPoint[i+2].second.y;
+			inPoint[i].second.x = x/5;
+			inPoint[i].second.y = y/5;
+		}
+	}
+
+    //剔除孤立点
+	int iter = 3;
+	double maxDis = 0.07;
+	while(iter-->0)
+	{
+        for(auto i = inPoint.begin(); i!=inPoint.end(); )
+		{
+			if((pow(((*i).second.x - (*(i+1)).second.x), 2) + pow(((*i).second.y - (*(i+1)).second.y), 2)) > (maxDis * maxDis))
+			{
+				i = inPoint.erase(i);
+			}
+			else
+			{
+				++i;
+			}
+		}
 	}
 }
 
@@ -522,6 +548,7 @@ vector<laser_coor> getIndex(vector<laser_coor> &Point)
 	int begin = 0, end = 0; //直线的起点和终点下标
 	auto it = find_if(Point.begin(), Point.end(), [](laser_coor x) { return x.first.second; });
 	auto lastIt = Point.begin();
+	if(it != Point.end()) hasEdge = true;//表面存在角点
 	do
 	{
 
