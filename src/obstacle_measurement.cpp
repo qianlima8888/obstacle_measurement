@@ -28,8 +28,6 @@ using namespace cv::dnn;
 
 #define pi 3.1415926
 
-bool hasEdge = false;
-
 typedef struct PPoint_
 {
 	double x;
@@ -97,8 +95,8 @@ void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 	double dis = 0;
 	double all_piex = 0;
 
-	int begin = Point.size()*0.3;
-	int end = Point.size()*0.7;
+	int begin = Point.size()*0.2;
+	int end = Point.size()*0.8;
 
 	if((end-begin) < 10)
 	{
@@ -106,11 +104,10 @@ void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 		end = Point.size();
 	}
 	//截取中间激光点进行单位像素距离计算
-	for (int i = begin; i < end; i++)
+	for (int i = begin+3; i < end; i++)
 	{
-		float thita = lines_orientation(Point[i].first.first, Point[i - 1].first.first, 0);
-		all_piex += fabs(sqrt(pow((Point[i - 1].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 1].first.first.y - Point[i].first.first.y), 2))*cos(thita));
-		dis += fabs(sqrt(pow((Point[i - 1].second.x - Point[i].second.x), 2) + pow((Point[i - 1].second.y - Point[i].second.y), 2))*cos(thita));
+		all_piex += fabs(sqrt(pow((Point[i - 3].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 3].first.first.y - Point[i].first.first.y), 2));
+		dis += fabs(sqrt(pow((Point[i - 3].second.x - Point[i].second.x), 2) + pow((Point[i - 3].second.y - Point[i].second.y), 2));
 	}
 	result[0] = dis / all_piex * 100;
 	result[1] = result[0];
@@ -245,6 +242,12 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		rangeXMIN = di[di.size() - 1].first.first.x;
 	}
 
+	if(label == 8)
+	{
+		rangeXMAX += 20;
+		rangeXMIN -=20;
+	}
+
 	//circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
 	//circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
 	//imshow("laser",  LaserMat);//显示可视化的激光雷达点
@@ -309,6 +312,7 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		ROS_INFO_STREAM("检测到直线特征过少!");
 		ROS_INFO_STREAM("H line size is " << H_Line.size());
 		ROS_INFO_STREAM("V line size is " << V_Line.size());
+		ROS_INFO_STREAM("-------------------------------\n");
 		return;
 	}
 
@@ -379,16 +383,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, H_Line[bottom][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 
-    double reduse = 0.9;
-    if(label == 8 || hasEdge == false)
-	{
-		ROS_INFO_STREAM("reduse is 1");
-        reduse = 1.0;
-	}
-
-    ROS_INFO_STREAM("reduse is "<<reduse);
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1] * reduse;
-	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0] * reduse;
+	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
+	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
@@ -548,7 +544,7 @@ vector<laser_coor> getIndex(vector<laser_coor> &Point)
 	int begin = 0, end = 0; //直线的起点和终点下标
 	auto it = find_if(Point.begin(), Point.end(), [](laser_coor x) { return x.first.second; });
 	auto lastIt = Point.begin();
-	if(it != Point.end()) hasEdge = true;//表面存在角点
+	
 	do
 	{
 
