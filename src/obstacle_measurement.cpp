@@ -106,8 +106,8 @@ void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 	//截取中间激光点进行单位像素距离计算
 	for (int i = begin+3; i < end; i++)
 	{
-		all_piex += fabs(sqrt(pow((Point[i - 3].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 3].first.first.y - Point[i].first.first.y), 2));
-		dis += fabs(sqrt(pow((Point[i - 3].second.x - Point[i].second.x), 2) + pow((Point[i - 3].second.y - Point[i].second.y), 2));
+		all_piex += sqrt(pow((Point[i - 3].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 3].first.first.y - Point[i].first.first.y), 2));
+		dis += sqrt(pow((Point[i - 3].second.x - Point[i].second.x), 2) + pow((Point[i - 3].second.y - Point[i].second.y), 2));
 	}
 	result[0] = dis / all_piex * 100;
 	result[1] = result[0];
@@ -353,19 +353,6 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	Mat gray_dst = roiImg.clone();
 
-	//可视化激光点
-	for (int i = 0; i < laserPoint.size(); i++)
-	{
-		if (laserPoint[i].first.second)
-		{
-			circle(LaserMat, laserPoint[i].first.first, 2, Scalar(0, 0, 255), 2, 1); //红色显示边缘点
-		}
-		else
-		{
-			circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //绿色显示平面点
-		}
-	}
-
 	//绘制轮廓
 	Point crossPointTL = getCrossPoint(paramA, paramB);
 	line(gray_dst, H_Line[top][0], crossPointTL, Scalar(0, 0, 255), 1, LINE_AA);
@@ -385,6 +372,23 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
 	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
+
+    //auto it = find_if(laserPoint.begin(), laserPoint.end(), [](laser_coor x) { return x.first.second; });
+	//可视化激光点
+	for (int i = 0; i < laserPoint.size(); i++)
+	{
+		if((laserPoint[i].first.first.x >= crossPointTL.x) && (laserPoint[i].first.first.x <= crossPointTR.x))
+		{
+            if (laserPoint[i].first.second)
+			{
+				circle(LaserMat, laserPoint[i].first.first, 2, Scalar(0, 0, 255), 2, 1); //红色显示边缘点
+			}
+			else
+			{
+				circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //绿色显示平面点
+			}
+		}
+	}
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
