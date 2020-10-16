@@ -382,8 +382,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	//可视化激光点
 	for (int i = 0; i < laserPoint.size(); i++)
 	{
-		if((laserPoint[i].first.first.x >= crossPointTL.x) && (laserPoint[i].first.first.x <= crossPointTR.x))
-		{
+		//if((laserPoint[i].first.first.x >= crossPointTL.x) && (laserPoint[i].first.first.x <= crossPointTR.x))
+		//{
             if (laserPoint[i].first.second)
 			{
 				circle(LaserMat, laserPoint[i].first.first, 2, Scalar(0, 0, 255), 2, 1); //红色显示边缘点
@@ -392,7 +392,7 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 			{
 				circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //绿色显示平面点
 			}
-		}
+		//}
 	}
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
