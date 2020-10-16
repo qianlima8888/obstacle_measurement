@@ -233,7 +233,10 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	auto di = getIndex(laserPoint);
 	if (di.size() == 0)
 	{
-		ROS_INFO_STREAM("激光雷达数据过少,无法完成检测!");
+		ROS_INFO_STREAM("-------------------------------");
+		ROS_INFO_STREAM("连续平面激光点数过少");
+		ROS_INFO_STREAM("无法进行有效测量,结束该帧测量");
+		ROS_INFO_STREAM("-------------------------------\n");
 		return;
 	}
 	else
@@ -309,9 +312,11 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	if (H_Line.size() < 2 || V_Line.size() < 2)
 	{
+		ROS_INFO_STREAM("-------------------------------");
 		ROS_INFO_STREAM("检测到直线特征过少!");
 		ROS_INFO_STREAM("H line size is " << H_Line.size());
 		ROS_INFO_STREAM("V line size is " << V_Line.size());
+		ROS_INFO_STREAM("无法进行测量");
 		ROS_INFO_STREAM("-------------------------------\n");
 		return;
 	}
