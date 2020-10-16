@@ -247,8 +247,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	if(label == 8)
 	{
-		rangeXMAX += 20;
-		rangeXMIN -=20;
+		rangeXMAX += 200;
+		rangeXMIN -=200;
 	}
 
 	//circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
