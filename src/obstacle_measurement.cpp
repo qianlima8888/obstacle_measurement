@@ -213,7 +213,7 @@ vector<Vec4i> houghlinedetect(Mat &roiImg)
 
 	Mat dst;
 	//使用边缘检测将图片二值化
-	Canny(roiImg, dst, threshold_value, 2 * threshold_value, 3, false);
+	Canny(roiImg, dst, 10, 50, 3, false);
 
 	vector<Vec4i> lines;								   //存储直线数据
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
@@ -441,7 +441,7 @@ void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor>
 	for (int id = 4; id < laserPoint.size() - 4; id++)
 	{
 
-		if (isEdgePoint(laserPoint[id - 4].second, laserPoint[id].second, laserPoint[id + 4].second, 10))
+		if (isEdgePoint(laserPoint[id - 4].second, laserPoint[id].second, laserPoint[id + 4].second, 8))
 		{
 			laserPoint[id].first.second = true;
 		}
