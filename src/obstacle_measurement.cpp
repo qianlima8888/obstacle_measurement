@@ -401,6 +401,7 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	{
 		ROS_INFO_STREAM("测量失败!");
 		ROS_INFO_STREAM("-------------------------------\n");
+		return;
 	}
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
