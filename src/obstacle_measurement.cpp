@@ -68,9 +68,11 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 void computerPiexDistance(vector<laser_coor> &Point, float result[2]);
 void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, int w);
 
-string modelConfiguration = "/home/wode/configuration_folder/trash_ssd/opencv_mbssd_indoor/MobileNetSSD_deploy.prototxt";
-string modelBinary = "/home/wode/configuration_folder/trash_ssd/opencv_mbssd_indoor/mobilenet_indoorone_120000.caffemodel";
-string *class_array = new string[9]{"background", "window", "bed", "aricondition", "sofa", "chair", "cabinet", "trash", "door"};
+string modelConfiguration = "/home/map/configuration_folder/opencv_mbssd_indoor/newindoor_bob/deploy.prototxt";
+string modelBinary = "/home/map/configuration_folder/opencv_mbssd_indoor/newindoor_bob/_iter_90109.caffemodel";
+//string *class_array = new string[9]{"background", "window", "bed", "aricondition", "sofa", "chair", "cabinet", "trash", "door"};
+string *class_array = new string[12]{"background", "bed", "cabinet", "chair", "table", "sofa", "closestool", "door", "refrigerator", "washer", "corner", "trash"};
+
 Net net = readNetFromCaffe(modelConfiguration, modelBinary);
 
 double cx_ = 239.9 * 2;
@@ -209,7 +211,7 @@ float lines_orientation(Point begin, Point end, int flag)
 vector<Vec4i> houghlinedetect(Mat &roiImg)
 {
 
-	int threshold_value = 135;
+	int threshold_value = 30;
 
 	Mat dst;
 	//使用边缘检测将图片二值化
@@ -247,8 +249,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	if(label == 8)
 	{
-		rangeXMAX += 200;
-		rangeXMIN -=200;
+		rangeXMAX += 20;
+		rangeXMIN -=20;
 	}
 
 	//circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
@@ -270,7 +272,7 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		Vec4i Points = lines[i];
 		Point begin(Points[0], Points[1]), end(Points[2], Points[3]);
 		float angle = fabs(lines_orientation(begin, end, 1));
-		if (label == 7 || label == 8)
+		if (label == 7)
 		{
 			Hangle = 0;
 			maxAngle = 30;
@@ -393,6 +395,12 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 				circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //绿色显示平面点
 			}
 		//}
+	}
+
+	if(hi<10 || hi>300 || wh<10 || wh>200)
+	{
+		ROS_INFO_STREAM("测量失败!");
+		ROS_INFO_STREAM("-------------------------------\n");
 	}
 
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
@@ -649,7 +657,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		{
 
 			int labelidx = detectionMat.at<float>(i, 1); //识别物体类别
-			if (labelidx == 6 || labelidx == 7 || labelidx == 8)
+			if (labelidx == 2 || labelidx == 7)
 			{
 				detection_record_new.push_back(labelidx); //图片中的框索引
 				detection_record_i.push_back(i);
