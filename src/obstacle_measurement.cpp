@@ -68,8 +68,8 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 void computerPiexDistance(vector<laser_coor> &Point, float result[2]);
 void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, int w);
 
-string modelConfiguration = "/home/map/configuration_folder/opencv_mbssd_indoor/newindoor_bob/deploy.prototxt";
-string modelBinary = "/home/map/configuration_folder/opencv_mbssd_indoor/newindoor_bob/_iter_90109.caffemodel";
+string modelConfiguration = "/home/wode/configuration_folder/trash_ssd/newindoor_bob/deploy.prototxt";
+string modelBinary = "/home/wode/configuration_folder/trash_ssd/newindoor_bob/_iter_90109.caffemodel";
 //string *class_array = new string[9]{"background", "window", "bed", "aricondition", "sofa", "chair", "cabinet", "trash", "door"};
 string *class_array = new string[12]{"background", "bed", "cabinet", "chair", "table", "sofa", "closestool", "door", "refrigerator", "washer", "corner", "trash"};
 
