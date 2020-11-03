@@ -51,6 +51,8 @@ typedef struct Point_
 	}
 } spoint;
 
+Rect show;
+
 //储存雷达点的像素坐标和二维坐标 poin2i为像素坐标 bool表示是否为边缘点 第二个Point2i储存空间坐标
 typedef pair<pair<Point2i, bool>, spoint> laser_coor;
 
@@ -219,8 +221,9 @@ vector<Vec4i> houghlinedetect(Mat &roiImg)
 
 	vector<Vec4i> lines;								   //存储直线数据
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
-
-	imshow("canny", dst);
+    
+	Mat cannyShow = dst(show);
+	imshow("canny", cannyShow);
 
 	return lines;
 }
@@ -403,7 +406,7 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		ROS_INFO_STREAM("-------------------------------\n");
 		return;
 	}
-
+    
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
 
@@ -413,9 +416,12 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	memset(tx, 0, 20);
 	sprintf(tx, "%.2f", wh);
 	putText(gray_dst, tx, (crossPointBR + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 0, 255), 1.8);
+    
+	Mat lunkuoMat = gray_dst(show);
+	Mat laserShowMat = LaserMat(show);
 
-	imshow("lines", gray_dst); //显示霍夫变换检测后框选的物体轮廓图
-	imshow("laser", LaserMat); //显示可视化的激光雷达点
+	imshow("lines", lunkuoMat); //显示霍夫变换检测后框选的物体轮廓图
+	imshow("laserPoint", laserShowMat); //显示可视化的激光雷达点
 }
 //激光雷达坐标系转换为像素坐标系 并判断激光点是否为边缘点
 void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor> &laserPoint)
@@ -654,6 +660,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	for (int i = 0; i < detectionMat.rows; i++)
 	{
 		float confidence = detectionMat.at<float>(i, 2); //置信度
+		ROS_INFO_STREAM("confidence is "<<confidence);
 		if (confidence > -1)
 		{
 
@@ -699,6 +706,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 			h = rgb_ptr->image.rows - y;
 
 		Rect object_rect(x, y, w, h);
+		show = object_rect;
 
 		//ROS_INFO("运行grabcut函数......");
 		//抠图 去除背景干扰
@@ -707,16 +715,26 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		compare(cut, GC_PR_FGD, cut, CMP_EQ);
 		Mat foreGround(rgb_ptr->image.size(), CV_8UC3, Scalar(255, 255, 255));
 		rgb_ptr->image.copyTo(foreGround, cut);
+		imshow("grab", foreGround);
 		//ROS_INFO("grabcut函数完成");
 
 		vector<laser_coor> inPoint;
-		pointInRoi(object_rect, laserPoint, inPoint);
-		//auto line = houghlinedetect(foreGround);
-		measurement(foreGround, inPoint, *new_detection_iterator, x, w);
+		try
+		{
+			pointInRoi(object_rect, laserPoint, inPoint);
+		    //auto line = houghlinedetect(foreGround);
+		    measurement(foreGround, inPoint, *new_detection_iterator, x, w);
+		}
+		catch(...)
+		{
+			waitKey(1000);
+			continue;
+		}
+
 
 		//imshow("grabcut", foreGround);
 
-		waitKey(1000);
+		waitKey(3000);
 	}
 
 	//ROS_INFO("数据处理完成.等待下帧数据.\n");
