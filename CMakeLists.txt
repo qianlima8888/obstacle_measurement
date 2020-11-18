@@ -35,3 +35,9 @@ target_link_libraries(obstacle_measurement
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_executable(trash_measurement src/trash_measurement.cpp)
+target_link_libraries(trash_measurement
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
