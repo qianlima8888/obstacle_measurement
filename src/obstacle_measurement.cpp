@@ -633,6 +633,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		width = rgb_ptr->image.cols / 2;
 		height = rgb_ptr->image.rows / 2;
 		cv::resize(rgb_ptr->image, resize_rgb_mat, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+		imshow("origal", rgb_ptr->image);
 	}
 	catch (cv_bridge::Exception &e)
 	{
@@ -640,8 +641,6 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		ROS_INFO("结束该帧数据处理, 等待下帧数据.....");
 		return;
 	}
-
-	imshow("original", rgb_ptr->image);
 
 	//运行深度学习检测图片中的物体
 	Mat delframe;
@@ -695,10 +694,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		if (yRightBottom > height)
 			yRightBottom = height - 1;
 
-		int x = xLeftTop * 0.95 * 2;
-		int y = yLeftTop * 0.95 * 2;
-		int w = (xRightBottom - xLeftTop) * 1.15 * 2;
-		int h = (yRightBottom - yLeftTop) * 1.15 * 2;
+		int x = xLeftTop * 2;
+		int y = yLeftTop * 2;
+		int w = (xRightBottom - xLeftTop) * 2;
+		int h = (yRightBottom - yLeftTop) * 2;
 
 		if ((x + w) > rgb_ptr->image.cols)
 			w = rgb_ptr->image.cols - x;
@@ -715,6 +714,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		compare(cut, GC_PR_FGD, cut, CMP_EQ);
 		Mat foreGround(rgb_ptr->image.size(), CV_8UC3, Scalar(255, 255, 255));
 		rgb_ptr->image.copyTo(foreGround, cut);
+        
+		Mat rectMat = rgb_ptr->image.clone();
+		rectangle(rectMat, object_rect, Scalar(0, 0, 255));
+		imshow("object", rectMat);
 		imshow("grab", foreGround);
 		//ROS_INFO("grabcut函数完成");
 
@@ -734,7 +737,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 
 		//imshow("grabcut", foreGround);
 
-		waitKey(3000);
+		waitKey(1000);
 	}
 
 	//ROS_INFO("数据处理完成.等待下帧数据.\n");
