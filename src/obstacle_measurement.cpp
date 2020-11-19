@@ -90,7 +90,7 @@ double kinect2robot_y = -0.095;
 
 double laser2kinect_x = 0.035;
 double laser2kinect_y = -0.095;
-double laser2kinect_z = 0.3;
+double laser2kinect_z = 0.5;
 
 //计算每个像素点的实际距离(cm)
 void computerPiexDistance(vector<laser_coor> &Point, float result[2])
