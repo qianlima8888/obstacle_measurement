@@ -223,7 +223,7 @@ vector<Vec4i> houghlinedetect(Mat &roiImg)
 	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
     
 	Mat cannyShow = dst(show);
-	imshow("canny", cannyShow);
+	//imshow("canny", cannyShow);
 
 	return lines;
 }
@@ -256,16 +256,9 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		rangeXMIN -=20;
 	}
 
-	//circle(LaserMat, Point2i(rangeXMIN, di[0].first.first.y), 5, Scalar(255, 0, 0), 1, 1);
-	//circle(LaserMat, Point2i(rangeXMAX, di[di.size()-1].first.first.y), 5, Scalar(0, 255, 0), 1, 1);
-	//imshow("laser",  LaserMat);//显示可视化的激光雷达点
-
 	auto Hangle = getHorizonAngle(di);
 	float dis[2];
 	computerPiexDistance(di, dis);
-	//ROS_INFO_STREAM("angle is "<<Hangle);
-	//ROS_INFO_STREAM("dis is "<<dis);
-	//ROS_INFO_STREAM("all size is "<<inPoint.size()<<", cut size is "<<di.size());
 
 	vector<vector<Point>> H_Line, V_Line; //储存水平线与竖直线 储存每条线的起点 中点和终点
 
@@ -284,7 +277,6 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 		{
 			maxAngle = 30;
 		}
-		//ROS_INFO_STREAM("Han is "<<Hangle<<", angle is "<<angle<<", max is "<<maxAngle);
 		if (fabs(Hangle - angle) <= maxAngle)
 		{
 			if ((((begin.x + end.x) / 2) >= rangeXMIN) && (((begin.x + end.x) / 2) <= rangeXMAX))
@@ -615,9 +607,6 @@ float getHorizonAngle(vector<laser_coor> &result)
 //接收到传感器数据后的回调函数
 void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sensor_msgs::LaserScanConstPtr &laser_data)
 {
-	//ROS_INFO("----------------------------");
-	//ROS_INFO("得到一帧同步数据, 开始处理......");
-	//clock_t time_old = clock();
 
 	vector<laser_coor> laserPoint;
 	laser_to_rgb(laser_data, laserPoint);
@@ -645,7 +634,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	//运行深度学习检测图片中的物体
 	Mat delframe;
 	resize(rgb_ptr->image, delframe, Size(300, 300));
-	Mat inputBlob = blobFromImage(delframe, 0.007843, Size(300, 300), 127.5, false, false);
+	Mat inputBlob = blobFromImage(rgb_ptr->image, 1, Size(300, 300), 127.5, false, false);
 	net.setInput(inputBlob, "data");
 	Mat detection = net.forward("detection_out");
 	Mat detectionMat(detection.size[2], detection.size[3], CV_32F, detection.ptr<float>());
@@ -659,10 +648,12 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	for (int i = 0; i < detectionMat.rows; i++)
 	{
 		float confidence = detectionMat.at<float>(i, 2); //置信度
-		ROS_INFO_STREAM("confidence is "<<confidence);
-		if (confidence > -1)
+		//ROS_INFO_STREAM("confidence is "<<confidence);
+		
+		if (confidence > 0.18)
 		{
-
+			//cout<<"jiancedao"<<endl;
+			//cout<<confidence<<endl;
 			int labelidx = detectionMat.at<float>(i, 1); //识别物体类别
 			if (labelidx == 2 || labelidx == 7)
 			{
@@ -714,12 +705,8 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		compare(cut, GC_PR_FGD, cut, CMP_EQ);
 		Mat foreGround(rgb_ptr->image.size(), CV_8UC3, Scalar(255, 255, 255));
 		rgb_ptr->image.copyTo(foreGround, cut);
-        
-		Mat rectMat = rgb_ptr->image.clone();
-		rectangle(rectMat, object_rect, Scalar(0, 0, 255));
-		imshow("object", rectMat);
-		imshow("grab", foreGround);
-		//ROS_INFO("grabcut函数完成");
+        imshow("grab", foreGround);
+		rectangle(rgb_ptr->image, object_rect, Scalar(0, 0, 255));
 
 		vector<laser_coor> inPoint;
 		try
@@ -730,15 +717,14 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		}
 		catch(...)
 		{
-			waitKey(1000);
+			waitKey(1);
 			continue;
 		}
 
-
-		//imshow("grabcut", foreGround);
-
-		waitKey(1000);
 	}
+
+	imshow("object", rgb_ptr->image);
+	waitKey(1);
 
 	//ROS_INFO("数据处理完成.等待下帧数据.\n");
 }
