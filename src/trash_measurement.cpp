@@ -217,7 +217,7 @@ void getEdge(Mat &roiImg, vector<vector<Point>>& H_Line, vector<vector<Point>>& 
 				count++;
 			}
 		}
-		if(count>10)
+		if(count>30)
 		{
 			vector<Point> tmp;
 			Point begin(j/2-2, i), end(j/2+2, i);
@@ -501,7 +501,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	//运行深度学习检测图片中的物体
 	Mat delframe;
 	resize(rgb_ptr->image, delframe, Size(300, 300));
-	Mat inputBlob = blobFromImage(delframe, 0.007843, Size(300, 300), 127.5, false, false);
+	Mat inputBlob = blobFromImage(delframe, 1, Size(300, 300), 127.5, false, false);
 	net.setInput(inputBlob, "data");
 	Mat detection = net.forward("detection_out");
 	Mat detectionMat(detection.size[2], detection.size[3], CV_32F, detection.ptr<float>());
@@ -550,10 +550,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		if (yRightBottom > height)
 			yRightBottom = height - 1;
 
-		int x = xLeftTop * 2;
-		int y = yLeftTop * 2;
-		int w = (xRightBottom - xLeftTop) * 2;
-		int h = (yRightBottom - yLeftTop) * 2 * 1.1;
+		int x = xLeftTop * 2-20;
+		int y = yLeftTop * 2-20;
+		int w = (xRightBottom - xLeftTop) * 2 + 40;
+		int h = (yRightBottom - yLeftTop) * 2 + 40;
 
 		if ((x + w) > rgb_ptr->image.cols)
 			w = rgb_ptr->image.cols - x;
