@@ -41,3 +41,9 @@ target_link_libraries(trash_measurement
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_executable(chair_measurement src/chair_measurement.cpp)
+target_link_libraries(chair_measurement
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+)

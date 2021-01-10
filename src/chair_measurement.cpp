@@ -413,7 +413,6 @@ bool pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 
 	if(end == begin)
 	{
-		begin;
 		end = inPoint.size()-1;
 		//ROS_INFO_STREAM("begin is "<<begin<<" end is "<<end);
 		//ROS_INFO_STREAM("有效激光点太少 无法测量");
@@ -421,7 +420,7 @@ bool pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 	}
 
 	vector<laser_coor> tmp;
-	for(int i = begin+1; i<end; i++)
+	for(int i = inPoint.size()*0.25; i<end*0.85; i++)
 	{
 		tmp.push_back(inPoint[i]);
 	}
@@ -508,7 +507,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		{
 
 			int labelidx = detectionMat.at<float>(i, 1); //识别物体类别
-			if (labelidx==11)
+			if (labelidx==3)
 			{
 				detection_record_new.push_back(labelidx); //图片中的框索引
 				detection_record_i.push_back(i);
