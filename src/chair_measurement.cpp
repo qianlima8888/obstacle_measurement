@@ -88,7 +88,7 @@ double kinect2robot_y = -0.08;
 
 double laser2kinect_x = 0.01;
 double laser2kinect_y = -0.095;
-double laser2kinect_z = 0.5;
+double laser2kinect_z = 0.78;
 
 //计算每个像素点的实际距离(cm)
 void computerPiexDistance(vector<laser_coor> &Point, float result[2])
@@ -97,14 +97,6 @@ void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 	double dis = 0;
 	double all_piex = 0;
 
-	// int begin = Point.size()*0.2;
-	// int end = Point.size()*0.8;
-
-	// if((end-begin) < 10)
-	// {
-	// 	begin = 1;
-	// 	end = Point.size();
-	// }
 	//截取中间激光点进行单位像素距离计算
 	for (int i = 2; i < Point.size(); i++)
 	{
@@ -190,7 +182,7 @@ void getEdge(Mat &roiImg, vector<vector<Point>>& H_Line, vector<vector<Point>>& 
 				count++;
 			}
 		}
-		if(count>30)
+		if(count>5)
 		{
 			vector<Point> tmp;
 			Point begin(j/2-2, i), end(j/2+2, i);
@@ -215,7 +207,7 @@ void getEdge(Mat &roiImg, vector<vector<Point>>& H_Line, vector<vector<Point>>& 
 				count++;
 			}
 		}
-		if(count>10)
+		if(count>5)
 		{
 			vector<Point> tmp;
 			Point begin(j/2-2, i), end(j/2+2, i);
@@ -240,7 +232,7 @@ void getEdge(Mat &roiImg, vector<vector<Point>>& H_Line, vector<vector<Point>>& 
 				count++;
 			}
 		}
-		if(count>10)
+		if(count>40)
 		{
 			vector<Point> tmp;
 			Point begin(i, j/2-2), end(i, j/2+2);
@@ -265,7 +257,7 @@ void getEdge(Mat &roiImg, vector<vector<Point>>& H_Line, vector<vector<Point>>& 
 				count++;
 			}
 		}
-		if(count>10)
+		if(count>30)
 		{
 			vector<Point> tmp;
 			Point begin(i, j/2-2), end(i, j/2+2);
@@ -322,8 +314,8 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, crossPointTR, crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, crossPointBR, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
 
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
-	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
+	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1]*0.58;
+	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0]*0.58;
     
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
@@ -414,13 +406,10 @@ bool pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 	if(end == begin)
 	{
 		end = inPoint.size()-1;
-		//ROS_INFO_STREAM("begin is "<<begin<<" end is "<<end);
-		//ROS_INFO_STREAM("有效激光点太少 无法测量");
-		//return false;
 	}
 
 	vector<laser_coor> tmp;
-	for(int i = inPoint.size()*0.25; i<end*0.85; i++)
+	for(int i = inPoint.size()*0.25+2; i<end*0.85-2; i++)
 	{
 		tmp.push_back(inPoint[i]);
 	}
@@ -537,10 +526,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		if (yRightBottom > height)
 			yRightBottom = height - 1;
 
-		int x = xLeftTop * 2;
-		int y = yLeftTop * 2;
+		int x = xLeftTop * 2+10;
+		int y = yLeftTop * 2-22;
 		int w = (xRightBottom - xLeftTop) * 2;
-		int h = (yRightBottom - yLeftTop) * 2+10;
+		int h = (yRightBottom - yLeftTop) * 2 + 32;
 
 		if ((x + w) > rgb_ptr->image.cols)
 			w = rgb_ptr->image.cols - x;
@@ -549,6 +538,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 
 		Rect object_rect(x, y, w, h);
 		show = object_rect;
+		ROS_INFO_STREAM("rect x is "<<x);
+		ROS_INFO_STREAM("rest y is "<<y);
+		ROS_INFO_STREAM("rect w is "<<w);
+		ROS_INFO_STREAM("rest h is "<<h);
 
 		//ROS_INFO("运行grabcut函数......");
 		//抠图 去除背景干扰
@@ -559,11 +552,13 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		rgb_ptr->image.copyTo(foreGround, cut);
 		imshow("grab", foreGround);
 		//ROS_INFO("grabcut函数完成");
-		//rectangle(rgb_ptr->image, object_rect, Scalar(0, 0, 255));
+		Mat rectMat = rgb_ptr->image.clone();
+		rectangle(rectMat, object_rect, Scalar(0, 0, 255));
 		imshow("original", rgb_ptr->image);
+		imshow("rect", rectMat);
 
 		vector<laser_coor> inPoint;
-		Mat LaserMat =  foreGround.clone();
+		Mat LaserMat =  rgb_ptr->image.clone();//储存显示雷达激光点的图像
 		try
 		{
 			if(pointInRoi(object_rect, laserPoint, inPoint))
