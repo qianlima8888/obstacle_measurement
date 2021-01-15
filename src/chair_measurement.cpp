@@ -570,7 +570,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 			for (int i = 0; i < inPoint.size(); i++)
 			{
 				
-				circle(LaserMat, inPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //红色显示边缘点
+				circle(LaserMat, inPoint[i].first.first, 1, Scalar(0, 255, 0), 2, 2); //红色显示边缘点
 				
 			}
 
