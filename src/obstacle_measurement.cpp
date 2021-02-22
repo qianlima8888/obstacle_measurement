@@ -372,8 +372,32 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, H_Line[bottom][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
+	//float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
 	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
+
+    int count = 0;
+	float total = 0;
+	int k=0;
+
+	for (int i = 0; i < laserPoint.size(); i++)
+	{
+		float Ylaser = laserPoint[i].first.first.y;
+		float Xlaser = laserPoint[i].first.first.x;
+		if(laserPoint[i].first.second==true)
+		{
+			k=2;
+		}
+
+		if(Xlaser>crossPointTL.x && Xlaser<crossPointTR.x)
+		{
+            int Y1 = crossPointTL.y+(Xlaser-crossPointTL.x)/(crossPointTR.x-crossPointTL.x)*(crossPointTR.y-crossPointTL.y); 
+			int Y2 = crossPointBL.y+(Xlaser-crossPointBL.x)/(crossPointBR.x-crossPointBL.x)*(crossPointBR.y-crossPointBL.y);
+			total += (Y1-Y2)/(Ylaser-Y2)+k;
+			count+=1;
+		}
+ 	}
+	ROS_INFO_STREAM("k"<<k);
+	float hi = 6.5 * (total/count+k);//大柜子取6.5 小柜子取3.5
 
     //auto it = find_if(laserPoint.begin(), laserPoint.end(), [](laser_coor x) { return x.first.second; });
 	//可视化激光点
