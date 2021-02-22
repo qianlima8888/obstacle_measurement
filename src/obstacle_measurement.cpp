@@ -679,7 +679,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 			//cout<<"jiancedao"<<endl;
 			//cout<<confidence<<endl;
 			int labelidx = detectionMat.at<float>(i, 1); //识别物体类别
-			if (labelidx == 2 || labelidx == 7)
+			if (labelidx == 2)
 			{
 				detection_record_new.push_back(labelidx); //图片中的框索引
 				detection_record_i.push_back(i);

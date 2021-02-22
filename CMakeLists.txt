@@ -47,3 +47,9 @@ target_link_libraries(chair_measurement
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_executable(vision_laser src/vision_laser.cpp)
+target_link_libraries(vision_laser
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
