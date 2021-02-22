@@ -90,21 +90,100 @@ double laser2kinect_x = 0.01;
 double laser2kinect_y = -0.095;
 double laser2kinect_z = 0.78;
 
+double Y2=0,Y3=0;
+double L2=0,L3=0;
+
+void getCrossLine(Mat &im, Rect re)
+{
+	Mat result;
+	cvtColor(im, result, CV_BGR2GRAY);
+	threshold(result, result,50, 255, CV_THRESH_BINARY);
+	vector<Point> crossPoint;
+	int half = (re.tl().x + re.br().x)/ 2;
+	int pre = 0, current = 0;
+	int PointRows = 0;
+	bool isSecond = false;
+	for (int i = im.rows - 1; i >= 0; i--)
+	{
+		for (int j = 0; j < half; j++)
+		{
+			if (result.at<uchar>(i, j) < 100)
+			{
+				current++;
+				PointRows = j;
+			}
+		}
+
+		if ((current - pre) > 4)
+		{
+			circle(im, Point(PointRows, i), 2, Scalar(0, 0, 255));
+			crossPoint.push_back(Point(PointRows, i));
+			if (isSecond)
+				break;
+			isSecond = true;
+		}
+		pre = current;
+		current = 0;
+	}
+
+	pre = 0, current = 0;
+	PointRows = 0;
+	isSecond = false;
+	for (int i = im.rows - 1; i >= 0; i--)
+	{
+		for (int j = im.cols - 1; j > half; j--)
+		{
+			if (result.at<uchar>(i, j) < 100)
+			{
+				current++;
+				PointRows = j;
+			}
+		}
+
+		if ((current - pre) > 4)
+		{
+			circle(im, Point(PointRows, i), 2, Scalar(0, 0, 255));
+			crossPoint.push_back(Point(PointRows, i));
+			if (isSecond)
+				break;
+			isSecond = true;
+		}
+		pre = current;
+		current = 0;
+	}
+
+	line(im, crossPoint[0], crossPoint[1], Scalar(0, 0, 255), 1);
+	line(im, crossPoint[2], crossPoint[3], Scalar(0, 0, 255), 1);
+
+	Y2=(crossPoint[1].y+crossPoint[3].y)/2;
+	Y3=(crossPoint[0].y+crossPoint[2].y)/2;
+
+	L2=sqrt(pow((crossPoint[1].x-crossPoint[3].x), 2)+pow((crossPoint[1].y-crossPoint[3].y), 2));
+	L3=sqrt(pow((crossPoint[0].x-crossPoint[2].x), 2)+pow((crossPoint[0].y-crossPoint[2].y), 2));
+    //ROS_INFO_STREAM("L2 is "<<L2);
+	//ROS_INFO_STREAM("L3 is "<<L3);
+	imshow("orignal", im);
+
+}
+
 //计算每个像素点的实际距离(cm)
 void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 {
 	// //float result[2];
 	double dis = 0;
 	double all_piex = 0;
+	int y = 0;
 
 	//截取中间激光点进行单位像素距离计算
 	for (int i = 2; i < Point.size(); i++)
 	{
+		y+=Point[i].first.first.y;
 		all_piex += sqrt(pow((Point[i - 2].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 2].first.first.y - Point[i].first.first.y), 2));
 		dis += sqrt(pow((Point[i - 2].second.x - Point[i].second.x), 2) + pow((Point[i - 2].second.y - Point[i].second.y), 2));
 	}
 	result[0] = dis / all_piex * 100;
-	result[1] = result[0];
+	result[1] = y/(Point.size()-2);//返回激光点Y坐标
+	//ROS_INFO_STREAM("Y1 is "<<result[1]);
 }
 
 //相机坐标系转像素坐标系
@@ -314,8 +393,19 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	line(gray_dst, crossPointTR, crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
 	line(gray_dst, crossPointBR, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
 
-	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1]*0.58;
-	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0]*0.58;
+	int Y1 = dis[1];
+
+	double a = (Y3-Y1)/(Y2-Y1);
+	double L1 = (a*L2-L3)/(a-1);
+
+	// ROS_INFO_STREAM("Y1 is "<<Y1);
+	// ROS_INFO_STREAM("Y2 is "<<Y2);
+	// ROS_INFO_STREAM("Y3 is "<<Y3);
+	// ROS_INFO_STREAM("a is "<<a);
+    // ROS_INFO_STREAM("L1 is "<<L1);
+
+	float hi = (Y2-crossPointTL.y) * dis[0]* L1/L2 * 1.2;
+	float wh = L1 * dis[0] * 1.4;
     
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
@@ -538,10 +628,10 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 
 		Rect object_rect(x, y, w, h);
 		show = object_rect;
-		ROS_INFO_STREAM("rect x is "<<x);
-		ROS_INFO_STREAM("rest y is "<<y);
-		ROS_INFO_STREAM("rect w is "<<w);
-		ROS_INFO_STREAM("rest h is "<<h);
+		// ROS_INFO_STREAM("rect x is "<<x);
+		// ROS_INFO_STREAM("rest y is "<<y);
+		// ROS_INFO_STREAM("rect w is "<<w);
+		// ROS_INFO_STREAM("rest h is "<<h);
 
 		//ROS_INFO("运行grabcut函数......");
 		//抠图 去除背景干扰
@@ -556,6 +646,16 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		rectangle(rectMat, object_rect, Scalar(0, 0, 255));
 		imshow("original", rgb_ptr->image);
 		imshow("rect", rectMat);
+
+        Mat inrangeMat;
+		inRange(foreGround, Scalar(0,0,0),Scalar(100,100,100), inrangeMat);//再次分割
+        imshow("123", inrangeMat);
+        Mat changeMat(rectMat.rows, rectMat.cols, CV_8UC3, Scalar(255,255,255));
+		//cvtColor(foreground, inrangeMat, CV_BGR2GRAY);
+		//threshold(inrangeMat, inrangeMat, 50, 255, CV_THRESH_BINARY);
+        foreGround.copyTo(changeMat, inrangeMat);
+        imshow("change", changeMat);
+		getCrossLine(changeMat, object_rect);
 
 		vector<laser_coor> inPoint;
 		Mat LaserMat =  rgb_ptr->image.clone();//储存显示雷达激光点的图像
