@@ -161,7 +161,13 @@ vector<Vec4i> CannyAndResult(Mat &roiImg)
 	vector<Vec4i> hierarchy;
 	findContours(dst, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
 	Mat copyMat = Mat::zeros(roiImg.size(), CV_8UC1);
-    drawContours(copyMat, contours, 0, Scalar(255), 1, 8, hierarchy);
+	//int drawNum = (contours.size()>50)?50:contours.size();
+	for(int i = 0; i<contours.size(); i++)
+	{
+		if(contourArea((contours[i]))>500)
+            drawContours(copyMat, contours, i, Scalar(255), 1, 8, hierarchy);
+	}
+    
 	imshow("contours", copyMat);
 
 	vector<Vec4i> lines;								   //存储直线数据
@@ -599,7 +605,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		rgb_ptr->image.copyTo(foreGround, cut);
 		imshow("grab", foreGround);
 		//ROS_INFO("grabcut函数完成");
-		rectangle(rgb_ptr->image, object_rect, Scalar(0, 0, 255));
+		//rectangle(rgb_ptr->image, object_rect, Scalar(0, 0, 255));
 		imshow("original", rgb_ptr->image);
 
 		vector<laser_coor> inPoint;
