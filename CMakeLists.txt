@@ -53,3 +53,9 @@ target_link_libraries(vision_laser
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_executable(door src/door_measurement.cpp)
+target_link_libraries(door
+  ${OpenCV_LIBRARIES}
+  ${catkin_LIBRARIES}
+)

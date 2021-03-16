@@ -57,18 +57,15 @@ Rect show;
 typedef pair<pair<Point2i, bool>, spoint> laser_coor;
 
 Point2i camera_2_rgb(ppoint point_camera);
-bool isEdgePoint(spoint p1, spoint p2, spoint p3, double max);
 Point getCrossPoint(vector<int> LineA, vector<int> LineB);
 vector<int> getLineParam(Point start, Point end);
 float lines_orientation(Point begin, Point end, int flag);
-vector<Vec4i> houghlinedetect(Mat &roiImg);
 void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor> &laserPoint);
-void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPoint);
-vector<laser_coor> getIndex(vector<laser_coor> &Point);
-float getHorizonAngle(vector<laser_coor> &Point);
+bool pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPoint);
 void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sensor_msgs::LaserScanConstPtr &laser_data);
 void computerPiexDistance(vector<laser_coor> &Point, float result[2]);
 void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, int w);
+vector<Vec4i> CannyAndResult(Mat &roiImg);
 
 string modelConfiguration = "/home/wode/configuration_folder/trash_ssd/newindoor_bob/deploy.prototxt";
 string modelBinary = "/home/wode/configuration_folder/trash_ssd/newindoor_bob/_iter_90109.caffemodel";
@@ -86,32 +83,24 @@ double fy_ = 268.575 * 2;
 //double laser2robot_y = 0.0;
 
 double kinect2robot_x = 0.132;
-double kinect2robot_y = -0.095;
+double kinect2robot_y = -0.08;
 
-double laser2kinect_x = 0.035;
+double laser2kinect_x = 0.01;
 double laser2kinect_y = -0.095;
 double laser2kinect_z = 0.5;
 
 //计算每个像素点的实际距离(cm)
 void computerPiexDistance(vector<laser_coor> &Point, float result[2])
 {
-	//float result[2];
+	// //float result[2];
 	double dis = 0;
 	double all_piex = 0;
 
-	int begin = Point.size()*0.2;
-	int end = Point.size()*0.8;
-
-	if((end-begin) < 10)
-	{
-		begin = 1;
-		end = Point.size();
-	}
 	//截取中间激光点进行单位像素距离计算
-	for (int i = begin+3; i < end; i++)
+	for (int i = 2; i < Point.size(); i++)
 	{
-		all_piex += sqrt(pow((Point[i - 3].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 3].first.first.y - Point[i].first.first.y), 2));
-		dis += sqrt(pow((Point[i - 3].second.x - Point[i].second.x), 2) + pow((Point[i - 3].second.y - Point[i].second.y), 2));
+		all_piex += sqrt(pow((Point[i - 2].first.first.x - Point[i].first.first.x), 2) + pow((Point[i - 2].first.first.y - Point[i].first.first.y), 2));
+		dis += sqrt(pow((Point[i - 2].second.x - Point[i].second.x), 2) + pow((Point[i - 2].second.y - Point[i].second.y), 2));
 	}
 	result[0] = dis / all_piex * 100;
 	result[1] = result[0];
@@ -124,29 +113,6 @@ Point2i camera_2_rgb(ppoint point_camera)
 	point_.x = (fx_ * point_camera.x / point_camera.z + cx_);
 	point_.y = (fy_ * point_camera.y / point_camera.z + cy_);
 	return point_;
-}
-
-//判断点p2是否为边缘点 max为曲率阈值
-bool isEdgePoint(spoint p1, spoint p2, spoint p3, double max)
-{
-
-	double a = (p1.x + p2.x) * (p2.x - p1.x) * (p3.y - p2.y);
-	double b = (p1.x + p2.x) * (p3.x - p2.x) * (p2.y - p1.y);
-	double c = (p1.y - p3.y) * (p2.y - p1.y) * (p3.y - p2.y);
-	double d = 2 * ((p2.x - p1.x) * (p3.y - p2.y) - (p3.x - p2.x) * (p2.y - p1.y));
-	double e = (p1.y + p2.y) * (p2.y - p1.y) * (p3.x - p2.x);
-	double f = (p3.y + p2.y) * (p3.y - p2.y) * (p2.x - p1.x);
-	double g = (p1.x - p3.x) * (p3.x - p1.x) * (p3.x - p2.x);
-
-	double x0 = (a - b + c) / d;
-	double y0 = (e - f + g) / (-d);
-
-	double ri = 1 / sqrt((x0 - p2.x) * (x0 - p2.x) + (y0 - p2.y) * (y0 - p2.y)); //计算曲率
-	//cout<<"ri is "<< ri<<endl;
-	if (ri > max)
-		return true;
-	else
-		return false;
 }
 
 //获得两直线交点
@@ -180,6 +146,84 @@ vector<int> getLineParam(Point start, Point end)
 	return result;
 }
 
+//识别物体轮廓并画框显示
+//利用霍夫变换检测直线然后选择最外侧的直线作为轮廓线
+vector<Vec4i> CannyAndResult(Mat &roiImg)
+{
+
+	int threshold_value = 30;
+
+	Mat dst;
+	//使用边缘检测将图片二值化
+	Canny(roiImg, dst, 10, 50, 3, false);
+
+	vector<vector<Point>> contours;
+	vector<Vec4i> hierarchy;
+	findContours(dst, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
+	Mat copyMat = Mat::zeros(roiImg.size(), CV_8UC1);
+	drawContours(copyMat, contours, 0, Scalar(255), 1, 8, hierarchy);
+	imshow("contours", copyMat);
+
+	vector<Vec4i> lines;								   //存储直线数据
+	HoughLinesP(copyMat, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
+    
+	imshow("canny", dst);
+    return lines;
+}
+
+//计算没有边缘点的激光雷达数据序列
+vector<laser_coor> getIndex(vector<laser_coor> &Point)
+{
+
+	//寻找最长的无边缘点的直线来计算角度
+	int maxP = 0;			//该段直线的激光点数
+	int begin = 0, end = 0; //直线的起点和终点下标
+	auto it = find_if(Point.begin(), Point.end(), [](laser_coor x) { return x.first.second; });
+	auto lastIt = Point.begin();
+	
+	do
+	{
+
+		int be = lastIt - Point.begin();
+		int en = it - Point.begin();
+		if ((en - be) > maxP)
+		{
+			begin = be;
+			end = en;
+		}
+		maxP = end - begin;
+		if (it == Point.end())
+			break;
+		lastIt = it;
+		it = find_if(it + 1, Point.end(), [](laser_coor x) { return x.first.second; });
+
+	} while (true);
+
+	if (maxP > 8)
+		return vector<laser_coor>(Point.begin() + begin, Point.begin() + end);
+	else
+		return vector<laser_coor>(0);
+}
+
+//计算激光雷达线在图片中的角度
+float getHorizonAngle(vector<laser_coor> &result)
+{
+
+	if (result.size() > 2)
+	{
+		vector<cv::Point> linePoints;
+		for (int i = 0; i < result.size(); i++)
+		{
+			linePoints.push_back(result[i].first.first);
+		}
+		cv::Vec4f linePara;
+		cv::fitLine(linePoints, linePara, cv::DIST_L2, 0, 1e-2, 1e-2);
+		return atan(linePara[1] / linePara[0]) * 180.0 / pi;
+	}
+	else
+		return -1;
+}
+
 //计算直线倾斜角度
 float lines_orientation(Point begin, Point end, int flag)
 {
@@ -208,33 +252,12 @@ float lines_orientation(Point begin, Point end, int flag)
 	}
 }
 
-//识别物体轮廓并画框显示
-//利用霍夫变换检测直线然后选择最外侧的直线作为轮廓线
-vector<Vec4i> houghlinedetect(Mat &roiImg)
-{
-
-	int threshold_value = 30;
-
-	Mat dst;
-	//使用边缘检测将图片二值化
-	Canny(roiImg, dst, 10, 50, 3, false);
-
-	vector<Vec4i> lines;								   //存储直线数据
-	HoughLinesP(dst, lines, 1, CV_PI / 180.0, 30, 30, 10); //源图需要是二值图像，HoughLines也是一样
-    
-	Mat cannyShow = dst(show);
-	//imshow("canny", cannyShow);
-
-	return lines;
-}
-
 void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, int w)
 {
 
-	Mat LaserMat = roiImg.clone();
-	vector<Vec4i> lines = houghlinedetect(roiImg);
-
 	int rangeXMIN, rangeXMAX;
+	vector<Vec4i> lines = CannyAndResult(roiImg);
+
 	auto di = getIndex(laserPoint);
 	if (di.size() == 0)
 	{
@@ -356,88 +379,32 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	Mat gray_dst = roiImg.clone();
 
 	//绘制轮廓
-	Point crossPointTL = getCrossPoint(paramA, paramB);
-	line(gray_dst, H_Line[top][0], crossPointTL, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, V_Line[left][0], crossPointTL, Scalar(0, 0, 255), 1, LINE_AA);
-
+	auto crossPointTL = getCrossPoint(paramA, paramB);
 	auto crossPointTR = getCrossPoint(paramA, paramD);
-	line(gray_dst, H_Line[top][0], crossPointTR, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, V_Line[right][0], crossPointTR, Scalar(0, 0, 255), 1, LINE_AA);
-
 	auto crossPointBL = getCrossPoint(paramC, paramB);
-	line(gray_dst, H_Line[bottom][0], crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, V_Line[left][0], crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
-
 	auto crossPointBR = getCrossPoint(paramC, paramD);
-	line(gray_dst, H_Line[bottom][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, V_Line[right][0], crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
+	line(gray_dst, crossPointTL, crossPointTR, Scalar(0, 0, 255), 1, LINE_AA);
+	line(gray_dst, crossPointTL, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
+	line(gray_dst, crossPointTR, crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
+	line(gray_dst, crossPointBR, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
 
-	//float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
+	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
 	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
-
-    int count = 0;
-	float total = 0;
-	int k=0;
-
-	for (int i = 0; i < laserPoint.size(); i++)
-	{
-		float Ylaser = laserPoint[i].first.first.y;
-		float Xlaser = laserPoint[i].first.first.x;
-		if(laserPoint[i].first.second==true)
-		{
-			k=2;
-		}
-
-		if(Xlaser>crossPointTL.x && Xlaser<crossPointTR.x)
-		{
-            int Y1 = crossPointTL.y+(Xlaser-crossPointTL.x)/(crossPointTR.x-crossPointTL.x)*(crossPointTR.y-crossPointTL.y); 
-			int Y2 = crossPointBL.y+(Xlaser-crossPointBL.x)/(crossPointBR.x-crossPointBL.x)*(crossPointBR.y-crossPointBL.y);
-			total += (Y1-Y2)/(Ylaser-Y2)+k;
-			count+=1;
-		}
- 	}
-	ROS_INFO_STREAM("k"<<k);
-	float hi = 6.5 * (total/count+k);//大柜子取6.5 小柜子取3.5
-
-    //auto it = find_if(laserPoint.begin(), laserPoint.end(), [](laser_coor x) { return x.first.second; });
-	//可视化激光点
-	for (int i = 0; i < laserPoint.size(); i++)
-	{
-		//if((laserPoint[i].first.first.x >= crossPointTL.x) && (laserPoint[i].first.first.x <= crossPointTR.x))
-		//{
-            if (laserPoint[i].first.second)
-			{
-				circle(LaserMat, laserPoint[i].first.first, 2, Scalar(0, 0, 255), 2, 1); //红色显示边缘点
-			}
-			else
-			{
-				circle(LaserMat, laserPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //绿色显示平面点
-			}
-		//}
-	}
-
-	if(hi<10 || hi>300 || wh<10 || wh>200)
-	{
-		ROS_INFO_STREAM("测量失败!");
-		ROS_INFO_STREAM("-------------------------------\n");
-		return;
-	}
     
 	ROS_INFO_STREAM("higet is " << hi << "cm, width is " << wh << "cm");
 	ROS_INFO_STREAM("-------------------------------\n");
 
 	char tx[20];
 	sprintf(tx, "%.2f", hi);
-	putText(gray_dst, tx, (crossPointTL + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 0, 255), 1.8);
+	putText(gray_dst, tx, (crossPointTL + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.3, Scalar(0, 0, 255), 1.8);
 	memset(tx, 0, 20);
 	sprintf(tx, "%.2f", wh);
-	putText(gray_dst, tx, (crossPointBR + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 0, 255), 1.8);
+	putText(gray_dst, tx, (crossPointBR + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.3, Scalar(0, 0, 255), 1.8);
     
-	Mat lunkuoMat = gray_dst(show);
-	Mat laserShowMat = LaserMat(show);
+	Mat lunkuoMat = gray_dst;//(show);
 
 	imshow("lines", lunkuoMat); //显示霍夫变换检测后框选的物体轮廓图
-	imshow("laserPoint", laserShowMat); //显示可视化的激光雷达点
+
 }
 //激光雷达坐标系转换为像素坐标系 并判断激光点是否为边缘点
 void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor> &laserPoint)
@@ -468,59 +435,12 @@ void laser_to_rgb(const sensor_msgs::LaserScanConstPtr &scan, vector<laser_coor>
 			laserPoint.push_back(make_pair(make_pair(point_, false), spoint(laser_x, laser_y)));
 		}
 	}
-
-	for (int id = 4; id < laserPoint.size() - 4; id++)
-	{
-
-		if (isEdgePoint(laserPoint[id - 4].second, laserPoint[id].second, laserPoint[id + 4].second, 8))
-		{
-			laserPoint[id].first.second = true;
-		}
-	}
-
-	vector<int> conPoints; //储存连续的特征点
-	vector<int> edgePoints;
-
-	for (int id = 5; id < laserPoint.size() - 5; id++)
-	{
-		//去除单个边缘点 单个边缘点基本是平面点
-		if (laserPoint[id].first.second && (!laserPoint[id + 1].first.second) && (!laserPoint[id - 1].first.second))
-		{
-			laserPoint[id].first.second = false;
-		}
-
-		//对连续的边缘点取中间的作为最终的边缘点
-		if (!laserPoint[id].first.second)
-		{
-			if (conPoints.size() > 3)
-			{
-				//ROS_INFO_STREAM("size is "<<conPoints.size());
-				edgePoints.push_back(conPoints[conPoints.size() / 2]);
-			}
-			vector<int>().swap(conPoints);
-		}
-
-		//储存连续的边缘点
-		if (laserPoint[id].first.second && ((laserPoint[id + 1].first.second) || (laserPoint[id - 1].first.second)))
-		{
-			conPoints.push_back(id);
-		}
-	}
-
-	for (int id = 0; id < laserPoint.size(); id++)
-	{
-		laserPoint[id].first.second = false;
-	}
-
-	for (int id : edgePoints)
-	{
-		laserPoint[id].first.second = true;
-	}
+    //ROS_INFO_STREAM("laser size is "<<laserPoint.size());
 }
-
+   
 //判断哪些激光点位于识别到的物体上
 //并判断激光线在照片中的倾斜角度
-void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPoint)
+bool pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPoint)
 {
 
 	int Xmin = roi.tl().x * 1.1, Ymin = roi.tl().y * 1.1;
@@ -573,64 +493,15 @@ void pointInRoi(Rect roi, vector<laser_coor> &allPoint, vector<laser_coor> &inPo
 			}
 		}
 	}
-}
-
-//计算没有边缘点的激光雷达数据序列
-vector<laser_coor> getIndex(vector<laser_coor> &Point)
-{
-
-	//寻找最长的无边缘点的直线来计算角度
-	int maxP = 0;			//该段直线的激光点数
-	int begin = 0, end = 0; //直线的起点和终点下标
-	auto it = find_if(Point.begin(), Point.end(), [](laser_coor x) { return x.first.second; });
-	auto lastIt = Point.begin();
-	
-	do
-	{
-
-		int be = lastIt - Point.begin();
-		int en = it - Point.begin();
-		if ((en - be) > maxP)
-		{
-			begin = be;
-			end = en;
-		}
-		maxP = end - begin;
-		if (it == Point.end())
-			break;
-		lastIt = it;
-		it = find_if(it + 1, Point.end(), [](laser_coor x) { return x.first.second; });
-
-	} while (true);
-
-	if (maxP > 8)
-		return vector<laser_coor>(Point.begin() + begin, Point.begin() + end);
-	else
-		return vector<laser_coor>(0);
-}
-
-//计算激光雷达线在图片中的角度
-float getHorizonAngle(vector<laser_coor> &result)
-{
-
-	if (result.size() > 2)
-	{
-		vector<cv::Point> linePoints;
-		for (int i = 0; i < result.size(); i++)
-		{
-			linePoints.push_back(result[i].first.first);
-		}
-		cv::Vec4f linePara;
-		cv::fitLine(linePoints, linePara, cv::DIST_L2, 0, 1e-2, 1e-2);
-		return atan(linePara[1] / linePara[0]) * 180.0 / pi;
-	}
-	else
-		return -1;
+    return true;
 }
 
 //接收到传感器数据后的回调函数
 void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sensor_msgs::LaserScanConstPtr &laser_data)
 {
+	//ROS_INFO("----------------------------");
+	//ROS_INFO("得到一帧同步数据, 开始处理......");
+	//clock_t time_old = clock();
 
 	vector<laser_coor> laserPoint;
 	laser_to_rgb(laser_data, laserPoint);
@@ -646,7 +517,6 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		width = rgb_ptr->image.cols / 2;
 		height = rgb_ptr->image.rows / 2;
 		cv::resize(rgb_ptr->image, resize_rgb_mat, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
-		imshow("origal", rgb_ptr->image);
 	}
 	catch (cv_bridge::Exception &e)
 	{
@@ -658,7 +528,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	//运行深度学习检测图片中的物体
 	Mat delframe;
 	resize(rgb_ptr->image, delframe, Size(300, 300));
-	Mat inputBlob = blobFromImage(rgb_ptr->image, 1, Size(300, 300), 127.5, false, false);
+	Mat inputBlob = blobFromImage(delframe, 1, Size(300, 300), 127.5, false, false);
 	net.setInput(inputBlob, "data");
 	Mat detection = net.forward("detection_out");
 	Mat detectionMat(detection.size[2], detection.size[3], CV_32F, detection.ptr<float>());
@@ -673,13 +543,11 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 	{
 		float confidence = detectionMat.at<float>(i, 2); //置信度
 		//ROS_INFO_STREAM("confidence is "<<confidence);
-		
-		if (confidence > 0.18)
+		if (confidence > 0.5)
 		{
-			//cout<<"jiancedao"<<endl;
-			//cout<<confidence<<endl;
+
 			int labelidx = detectionMat.at<float>(i, 1); //识别物体类别
-			if (labelidx == 7)
+			if (labelidx==7)
 			{
 				detection_record_new.push_back(labelidx); //图片中的框索引
 				detection_record_i.push_back(i);
@@ -712,7 +580,7 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		int x = xLeftTop * 2;
 		int y = yLeftTop * 2;
 		int w = (xRightBottom - xLeftTop) * 2;
-		int h = (yRightBottom - yLeftTop) * 2;
+		int h = (yRightBottom - yLeftTop) * 2+10;
 
 		if ((x + w) > rgb_ptr->image.cols)
 			w = rgb_ptr->image.cols - x;
@@ -729,28 +597,38 @@ void combineCallback(const sensor_msgs::ImageConstPtr &rgb_image_qhd, const sens
 		compare(cut, GC_PR_FGD, cut, CMP_EQ);
 		Mat foreGround(rgb_ptr->image.size(), CV_8UC3, Scalar(255, 255, 255));
 		rgb_ptr->image.copyTo(foreGround, cut);
-        imshow("grab", foreGround);
+		imshow("grab", foreGround);
+		//ROS_INFO("grabcut函数完成");
 		rectangle(rgb_ptr->image, object_rect, Scalar(0, 0, 255));
+		imshow("original", rgb_ptr->image);
 
 		vector<laser_coor> inPoint;
+		Mat LaserMat =  foreGround.clone();
 		try
 		{
-			pointInRoi(object_rect, laserPoint, inPoint);
-		    //auto line = houghlinedetect(foreGround);
-		    measurement(foreGround, inPoint, *new_detection_iterator, x, w);
+			if(pointInRoi(object_rect, laserPoint, inPoint))
+			{
+                //ROS_INFO_STREAM(" size is "<<inPoint.size());
+		        measurement(foreGround, inPoint, *new_detection_iterator, x, w);
+			}
+			
+			for (int i = 0; i < inPoint.size(); i++)
+			{
+				
+				circle(LaserMat, inPoint[i].first.first, 1, Scalar(0, 255, 0), 1, 1); //红色显示边缘点
+				
+			}
+
+			imshow("laser", LaserMat(show));
 		}
 		catch(...)
 		{
-			waitKey(1);
+			waitKey(1000);
 			continue;
 		}
 
+		waitKey(1000);
 	}
-
-	imshow("object", rgb_ptr->image);
-	waitKey(1);
-
-	//ROS_INFO("数据处理完成.等待下帧数据.\n");
 }
 
 int main(int argc, char **argv)
