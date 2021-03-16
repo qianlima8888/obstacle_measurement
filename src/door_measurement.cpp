@@ -161,7 +161,7 @@ vector<Vec4i> CannyAndResult(Mat &roiImg)
 	vector<Vec4i> hierarchy;
 	findContours(dst, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
 	Mat copyMat = Mat::zeros(roiImg.size(), CV_8UC1);
-	drawContours(copyMat, contours, 0, Scalar(255), 1, 8, hierarchy);
+    drawContours(copyMat, contours, 0, Scalar(255), 1, 8, hierarchy);
 	imshow("contours", copyMat);
 
 	vector<Vec4i> lines;								   //存储直线数据
