@@ -390,10 +390,10 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 	auto crossPointTR = getCrossPoint(paramA, paramD);
 	auto crossPointBL = getCrossPoint(paramC, paramB);
 	auto crossPointBR = getCrossPoint(paramC, paramD);
-	line(gray_dst, crossPointTL, crossPointTR, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, crossPointTL, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, crossPointTR, crossPointBR, Scalar(0, 0, 255), 1, LINE_AA);
-	line(gray_dst, crossPointBR, crossPointBL, Scalar(0, 0, 255), 1, LINE_AA);
+	line(gray_dst, crossPointTL, crossPointTR, Scalar(0, 0, 255), 4, LINE_AA);
+	line(gray_dst, crossPointTL, crossPointBL, Scalar(0, 0, 255), 4, LINE_AA);
+	line(gray_dst, crossPointTR, crossPointBR, Scalar(0, 0, 255), 4, LINE_AA);
+	line(gray_dst, crossPointBR, crossPointBL, Scalar(0, 0, 255), 4, LINE_AA);
 
 	float hi = sqrt((crossPointTL - crossPointBL).dot(crossPointTL - crossPointBL)) * dis[1];
 	float wh = sqrt((crossPointBL - crossPointBR).dot(crossPointBL - crossPointBR)) * dis[0];
@@ -403,13 +403,12 @@ void measurement(Mat &roiImg, vector<laser_coor> &laserPoint, int label, int x, 
 
 	char tx[20];
 	sprintf(tx, "%.2f", hi);
-	putText(gray_dst, tx, (crossPointTL + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.3, Scalar(0, 0, 255), 1.8);
+	putText(gray_dst, tx, (crossPointTL + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 1.8);
 	memset(tx, 0, 20);
 	sprintf(tx, "%.2f", wh);
-	putText(gray_dst, tx, (crossPointBR + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.3, Scalar(0, 0, 255), 1.8);
+	putText(gray_dst, tx, (crossPointBR + crossPointBL) / 2, FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 1.8);
     
 	Mat lunkuoMat = gray_dst;//(show);
-
 	imshow("lines", lunkuoMat); //显示霍夫变换检测后框选的物体轮廓图
 
 }
