@@ -153,9 +153,10 @@ vector<Vec4i> CannyAndResult(Mat &roiImg)
 
 	int threshold_value = 30;
 
-	Mat dst;
+	Mat dst, tmp;
+	blur(roiImg, tmp, Size(3, 3));
 	//使用边缘检测将图片二值化
-	Canny(roiImg, dst, 10, 50, 3, false);
+	Canny(tmp, dst, 10, 50, 3, false);
 
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
